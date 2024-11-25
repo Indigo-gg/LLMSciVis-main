@@ -1,0 +1,1 @@
+visualizes GCode content using vtk.js, allowing users to upload and view different layers of the GCode file.

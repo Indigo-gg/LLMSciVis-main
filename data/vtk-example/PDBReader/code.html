@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <script src="https://unpkg.com/vtk.js"></script>
+    <script>
+        const vtkFullScreenRenderWindow = vtk.Rendering.Misc.vtkFullScreenRenderWindow;
+        const vtkPDBReader=vtk.IO.Misc.vtkPDBReader;
+        const vtkActor = vtk.Rendering.Core.vtkActor;
+        const vtkMapper = vtk.Rendering.Core.vtkMapper;
+        const fullScreenRenderer = vtkFullScreenRenderWindow.newInstance({ background: [0, 0, 0] });
+        const renderer = fullScreenRenderer.getRenderer();
+        const renderWindow = fullScreenRenderer.getRenderWindow();
+
+        const vtkSphereMapper = vtk.Rendering.Core.vtkSphereMapper;
+        const vtkStickMapper= vtk.Rendering.Core.vtkStickMapper;
+        const vtkMoleculeToRepresentation = vtk.Filters.General.vtkMoleculeToRepresentation;
+
+        const reader = vtkPDBReader.newInstance();
+        const filter = vtkMoleculeToRepresentation.newInstance();
+        const sphereMapper = vtkSphereMapper.newInstance();
+        const stickMapper = vtkStickMapper.newInstance();
+        const sphereActor = vtkActor.newInstance();
+        const stickActor = vtkActor.newInstance();
+
+        reader.setUrl('caffeine.pdb').then(() => {
+                renderer.resetCamera();
+                renderWindow.render();
+
+            });
+
+
+        filter.setInputConnection(reader.getOutputPort());
+        filter.setHideElements(['H']);
+
+        // render sphere
+        sphereMapper.setInputConnection(filter.getOutputPort(0));
+        sphereMapper.setScaleArray(filter.getSphereScaleArrayName());
+        sphereActor.setMapper(sphereMapper);
+
+        // render sticks
+        stickMapper.setInputConnection(filter.getOutputPort(1));
+        stickMapper.setScaleArray('stickScales');
+        stickMapper.setOrientationArray('orientation');
+        stickActor.setMapper(stickMapper);
+        
+        renderer.addActor(sphereActor);
+        renderer.addActor(stickActor);
+    </script>
+</body>
+</html>

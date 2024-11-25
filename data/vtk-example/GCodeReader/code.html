@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>vtk.js GCodeReader</title>
+</head>
+
+<body>
+
+    <script type="text/javascript" src="https://unpkg.com/@babel/polyfill@7.0.0/dist/polyfill.js"></script>
+    <script src="https://unpkg.com/vtk.js"></script>
+    <script>
+        let renderer = null;
+        let renderWindow = null;
+        let layersSelector = null;
+        let layersLabel = null;
+
+        const controlPanel = `<table>
+  <tr>
+    <td colspan="2">
+      <h3 style="margin: 5px 0;">Options</h3>
+    </td>
+  </tr>
+  <tr>
+    <td class="label">Layers: </td>
+    <td>
+      <input type="range" class="layers" id="layers" min="0" max="0" value="0" step="1" style="width: 100%;" />
+    </td>
+  </tr>
+</table>`;
+
+
+
+        const vtkMath = vtk.Common.Core.vtkMath;
+
+        // const renderWindow = fullScreenRenderer.getRenderWindow();
+
+        const reader = vtk.IO.Misc.vtkGCodeReader.newInstance();
+
+        function refresh() {
+            if (renderer && renderWindow) {
+                renderer.resetCamera();
+                renderWindow.render();
+            }
+        }
+
+        function update() {
+            const fullScreenRenderer = vtk.Rendering.Misc.vtkFullScreenRenderWindow.newInstance();
+            fullScreenRenderer.addController(controlPanel);
+            layersSelector = document.querySelector('.layers');
+            layersLabel = document.querySelector('.label');
+            renderer = fullScreenRenderer.getRenderer();
+            renderWindow = fullScreenRenderer.getRenderWindow();
+            const numLayers = reader.getNumberOfOutputPorts();
+
+            layersLabel.innerHTML = `Layers(${numLayers}):`;
+            layersSelector.max = numLayers.toString();
+            layersSelector.value = numLayers.toString();
+
+            const actors = [];
+
+            for (let idx = 1; idx < numLayers; idx++) {
+                const polyData = reader.getOutputData(idx);
+                if (polyData) {
+                    const mapper = vtk.Rendering.Core.vtkMapper.newInstance();
+                    mapper.setInputData(polyData);
+
+                    const actor = vtk.Rendering.Core.vtkActor.newInstance();
+                    actor.setMapper(mapper);
+
+                    const hue = idx / numLayers;
+                    const saturation = 0.8;
+                    const value = 1;
+                    const hsv = [hue, saturation, value];
+                    const rgb = [];
+                    vtkMath.hsv2rgb(hsv, rgb);
+                    actor.getProperty().setColor(rgb);
+                    actor.rotateX(-90);
+
+                    actors.push(actor);
+                }
+            }
+
+            layersSelector.addEventListener('input', (event) => {
+                const visibleLayers = parseInt(event.target.value, 10);
+                actors.forEach((actor, index) => {
+                    actor.setVisibility(index < visibleLayers);
+                });
+                renderWindow.render();
+            });
+
+            actors.forEach((actor) => renderer.addActor(actor));
+            refresh();
+        }
+
+        const myContainer = document.querySelector('body');
+        const fileContainer = document.createElement('div');
+        fileContainer.innerHTML =
+            '<div>Select a gcode file.<br/><input type="file" class="file"/></div>';
+        myContainer.appendChild(fileContainer);
+
+        const fileInput = fileContainer.querySelector('input');
+
+        function handleFile(event) {
+            event.preventDefault();
+            const dataTransfer = event.dataTransfer;
+            const files = event.target.files || dataTransfer.files;
+            myContainer.removeChild(fileContainer);
+            const fileReader = new FileReader();
+            fileReader.onload = function onLoad(e) {
+                reader.parse(fileReader.result);
+                update();
+            };
+            fileReader.readAsArrayBuffer(files[0]);
+        }
+
+        fileInput.addEventListener('change', handleFile);
+
+    </script>
+
+
+</body>
+
+</html>

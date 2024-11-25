@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>vtk.js ElevationReader</title>
+    <!-- <link rel="stylesheet" href="https://kit.fontawesome.com/419a5ebb56.css" crossorigin="anonymous"> -->
+</head>
+
+<body>
+    <div id="renderer"></div>
+
+    <script type="text/javascript" src="https://unpkg.com/@babel/polyfill@7.0.0/dist/polyfill.js"></script>
+    <script src="https://unpkg.com/vtk.js"></script>
+    <script>
+        const fullScreenRenderer = vtk.Rendering.Misc.vtkFullScreenRenderWindow.newInstance({
+            background: [0, 0, 0],
+        });
+        const renderer = fullScreenRenderer.getRenderer();
+        const renderWindow = fullScreenRenderer.getRenderWindow();
+
+        // ----------------------------------------------------------------------------
+        // Example code
+        // ----------------------------------------------------------------------------
+
+        const reader = vtk.IO.Misc.vtkElevationReader.newInstance({
+            xSpacing: 0.01568,
+            ySpacing: 0.01568,
+            zScaling: 0.06666,
+        });
+        const mapper = vtk.Rendering.Core.vtkMapper.newInstance();
+        const actor = vtk.Rendering.Core.vtkActor.newInstance();
+
+        // const imagePath = 'http://kitware.github.io/vtk-js/data/elevation/dem.jpg';
+        const imagePath = './dem.jpg'
+        const dataPath = 'http://kitware.github.io/vtk-js/data/elevation/dem.csv';
+        mapper.setInputConnection(reader.getOutputPort());
+        actor.setMapper(mapper);
+
+        renderer.addActor(actor);
+        renderer.resetCamera();
+        renderWindow.render();
+
+        // Download and apply Texture
+        const img = new Image();
+        img.src = imagePath;
+        img.onload = function textureLoaded() {
+            const texture = vtk.Rendering.Core.vtkTexture.newInstance();
+            texture.setInterpolate(true);
+            texture.setImage(img);
+            actor.addTexture(texture);
+            renderWindow.render();
+        };
+
+        // Download elevation and render when ready
+        reader.setUrl(dataPath).then(() => {
+            renderer.resetCamera();
+            renderWindow.render();
+        });
+
+        window.reader = reader;
+        window.mapper = mapper;
+        window.actor = actor;
+        window.renderer = renderer;
+        window.renderWindow = renderWindow;
+
+    </script>
+
+</body>
+
+</html>

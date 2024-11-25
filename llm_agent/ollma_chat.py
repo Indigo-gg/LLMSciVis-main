@@ -1,6 +1,4 @@
 import json
-
-import flask
 import requests
 import config.ollama_config as url
 

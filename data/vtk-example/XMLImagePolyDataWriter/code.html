@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>vtk.js XMLImagePolyDataWriter</title>
+    <!-- <link rel="stylesheet" href="https://kit.fontawesome.com/419a5ebb56.css" crossorigin="anonymous"> -->
+</head>
+
+<body>
+    <div id="renderer"></div>
+
+    <script type="text/javascript" src="https://unpkg.com/@babel/polyfill@7.0.0/dist/polyfill.js"></script>
+    <script src="https://unpkg.com/vtk.js"></script>
+    <script>
+        const mapper = vtk.Rendering.Core.vtkMapper.newInstance();
+        const actor = vtk.Rendering.Core.vtkActor.newInstance();
+        const fullScreenRenderWindow = vtk.Rendering.Misc.vtkFullScreenRenderWindow;
+        const httpDataSetReader = vtk.IO.Core.vtkHttpDataSetReader;
+        const xmlPolyDataWriter = vtk.IO.XML.vtkXMLPolyDataWriter;
+        const xmlPolyDataReader = vtk.IO.XML.vtkXMLPolyDataReader;
+        const xmlWriter = vtk.IO.XML.vtkXMLWriter;
+        // 使用命名空间路径创建实例
+        const fullScreenRenderer = fullScreenRenderWindow.newInstance();
+        const renderer = fullScreenRenderer.getRenderer();
+        const renderWindow = fullScreenRenderer.getRenderWindow();
+        const reader = httpDataSetReader.newInstance({ fetchGzip: true });
+
+        const writer = xmlPolyDataWriter.newInstance();
+        writer.setFormat(xmlWriter.FormatTypes.BINARY);
+        writer.setInputConnection(reader.getOutputPort());
+
+        const writerReader = xmlPolyDataReader.newInstance();
+
+        reader.setUrl(`http://kitware.github.io/vtk-js/data/cow.vtp`, { loadData: true }).then(() => {
+            const fileContents = writer.write(reader.getOutputData());
+
+            // Try to read it back.
+            const textEncoder = new TextEncoder();
+            writerReader.parseAsArrayBuffer(textEncoder.encode(fileContents));
+            renderer.resetCamera();
+            renderWindow.render();
+
+            const blob = new Blob([fileContents], { type: 'text/plain' });
+            const a = window.document.createElement('a');
+            a.href = window.URL.createObjectURL(blob, { type: 'text/plain' });
+            a.download = 'cow.vtp';
+            a.text = 'Download';
+            a.style.position = 'absolute';
+            a.style.left = '50%';
+            a.style.bottom = '10px';
+            document.body.appendChild(a);
+            a.style.background = 'white';
+            a.style.padding = '5px';
+        });
+
+        actor.setMapper(mapper);
+
+        mapper.setInputConnection(writerReader.getOutputPort());
+
+        renderer.addActor(actor);
+
+        window.writer = writer;
+        window.writerReader = writerReader;
+        window.mapper = mapper;
+        window.actor = actor;
+        window.renderer = renderer;
+        window.renderWindow = renderWindow;
+
+
+    </script>
+
+</body>
+
+</html>

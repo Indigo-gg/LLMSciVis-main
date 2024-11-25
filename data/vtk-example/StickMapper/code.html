@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>vtk.js StickMapper</title>
+    <link rel="stylesheet" href="https://kit.fontawesome.com/419a5ebb56.css" crossorigin="anonymous">
+    <style>
+        #renderer {
+            width: 100%;
+            height: 600px;
+            background-color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="renderer"></div>
+    <script src="https://unpkg.com/vtk.js/Sources/Rendering/Profiles/Geometry"></script>
+    <script src="https://unpkg.com/vtk.js/Sources/Rendering/Profiles/Molecule"></script>
+    <script src="https://unpkg.com/vtk.js"></script>
+
+    <script>
+        // 使用vtk命名空间来引用各个类
+        const vtkActor = vtk.Rendering.Core.vtkActor;
+        const vtkCalculator = vtk.Filters.General.vtkCalculator;
+        const vtkFullScreenRenderWindow = vtk.Rendering.Misc.vtkFullScreenRenderWindow;
+        const vtkPlaneSource = vtk.Filters.Sources.vtkPlaneSource;
+        const vtkStickMapper = vtk.Rendering.Core.vtkStickMapper;
+
+        const AttributeTypes = vtk.Common.DataModel.vtkDataSetAttributes.AttributeTypes;
+        const FieldDataTypes = vtk.Common.DataModel.vtkDataSet.FieldAssociations;
+
+        const controlPanel = `<table>
+  <tr>
+    <td>X Resolution</td>
+    <td>
+      <input class='xResolution' type="range" min="1" max="25" step="1" value="10" />
+    </td>
+  </tr>
+  <tr>
+    <td>Y Resolution</td>
+    <td>
+      <input class='yResolution' type="range" min="1" max="25" step="1" value="10" />
+    </td>
+  </tr>
+</table>`;
+
+        // ----------------------------------------------------------------------------
+        // Standard rendering code setup
+        // ----------------------------------------------------------------------------
+
+        const fullScreenRenderer = vtkFullScreenRenderWindow.newInstance({
+            background: [0, 0, 0],
+        });
+        const renderer = fullScreenRenderer.getRenderer();
+        const renderWindow = fullScreenRenderer.getRenderWindow();
+
+        // ----------------------------------------------------------------------------
+        // Example code
+        // ----------------------------------------------------------------------------
+
+        const planeSource = vtkPlaneSource.newInstance();
+        const simpleFilter = vtkCalculator.newInstance();
+        const mapper = vtkStickMapper.newInstance();
+        const actor = vtkActor.newInstance();
+
+        simpleFilter.setFormula({
+            getArrays: (inputDataSets) => ({
+                input: [{ location: FieldDataTypes.COORDINATE }], // Require point coordinates as input
+                output: [
+                    // Generate two output arrays:
+                    {
+                        location: FieldDataTypes.POINT, // This array will be point-data ...
+                        name: 'orientation', // ... with the given name ...
+                        dataType: 'Float32Array', // ... of this type ...
+                        numberOfComponents: 3, // ... with this many components ...
+                    },
+                    {
+                        location: FieldDataTypes.POINT, // This array will be field data ...
+                        name: 'temperature', // ... with the given name ...
+                        dataType: 'Float32Array', // ... of this type ...
+                        attribute: AttributeTypes.SCALARS, // ... and will be marked as the default scalars.
+                        numberOfComponents: 1, // ... with this many components ...
+                    },
+                    {
+                        location: FieldDataTypes.POINT, // This array will be field data ...
+                        name: 'pressure', // ... with the given name ...
+                        dataType: 'Float32Array', // ... of this type ...
+                        numberOfComponents: 2, // ... with this many components ...
+                    },
+                ],
+            }),
+            evaluate: (arraysIn, arraysOut) => {
+                // Convert in the input arrays of vtkDataArrays into variables
+                // referencing the underlying JavaScript typed-data arrays:
+                const [coords] = arraysIn.map((d) => d.getData());
+                const [orient, temp, press] = arraysOut.map((d) => d.getData());
+
+                // Since we are passed coords as a 3-component array,
+                // loop over all the points and compute the point-data output:
+                for (let i = 0, sz = coords.length / 3; i < sz; ++i) {
+                    orient[i * 3] =
+                        (coords[3 * i] - 0.5) * (coords[3 * i] - 0.5) +
+                        (coords[3 * i + 1] - 0.5) * (coords[3 * i + 1] - 0.5);
+                    orient[i * 3 + 1] =
+                        (coords[3 * i] - 0.5) * (coords[3 * i] - 0.5) +
+                        (coords[3 * i + 1] - 0.5) * (coords[3 * i + 1] - 0.5);
+                    orient[i * 3 + 2] = 1.0;
+
+                    temp[i] = coords[3 * i + 1];
+
+                    press[i * 2] =
+                        (coords[3 * i] * coords[3 * i] +
+                            coords[3 * i + 1] * coords[3 * i + 1]) *
+                        0.05 +
+                        0.05;
+                    press[i * 2 + 1] =
+                        (coords[3 * i] * coords[3 * i] +
+                            coords[3 * i + 1] * coords[3 * i + 1]) *
+                        0.01 +
+                        0.01;
+                }
+                // Mark the output vtkDataArray as modified
+                arraysOut.forEach((x) => x.modified());
+            },
+        });
+
+        // The generated 'temperature' array will become the default scalars, so the plane mapper will color by 'temperature':
+        simpleFilter.setInputConnection(planeSource.getOutputPort());
+
+        mapper.setInputConnection(simpleFilter.getOutputPort());
+
+        mapper.setOrientationArray('orientation');
+        mapper.setScaleArray('pressure');
+
+        actor.setMapper(mapper);
+
+        renderer.addActor(actor);
+        renderer.resetCamera();
+        renderWindow.render();
+
+        // -----------------------------------------------------------
+        // UI control handling
+        // -----------------------------------------------------------
+
+        fullScreenRenderer.addController(controlPanel);
+        ['xResolution', 'yResolution'].forEach((propertyName) => {
+            document.querySelector(`.${propertyName}`).addEventListener('input', (e) => {
+                const value = Number(e.target.value);
+                planeSource.set({ [propertyName]: value });
+                renderWindow.render();
+            });
+        });
+
+        // -----------------------------------------------------------
+        // Make some variables global so that you can inspect and
+        // modify objects in your browser's developer console:
+        // -----------------------------------------------------------
+
+        window.planeSource = planeSource;
+        window.mapper = mapper;
+        window.actor = actor;
+        window.renderer = renderer;
+        window.renderWindow = renderWindow;
+
+    </script>
+</body>
+
+</html>

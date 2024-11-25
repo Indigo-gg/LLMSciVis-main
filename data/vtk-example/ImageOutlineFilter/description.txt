@@ -1,0 +1,2 @@
+使用vtk.js显示点云和轮廓，并提供调整点数量的控件。
+Tdisplays a point cloud and its outline using vtk.js, with controls to adjust the number of points.
