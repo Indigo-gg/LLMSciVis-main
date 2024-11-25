@@ -1,2 +1,0 @@
-
-Create image data, then render it using the `vtk` renderer based on `vtkImageSlice` and `vtkImageMapper`.

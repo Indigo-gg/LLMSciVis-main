@@ -1,1 +1,0 @@
-read terrain elevation data for height representation in a 3D view.

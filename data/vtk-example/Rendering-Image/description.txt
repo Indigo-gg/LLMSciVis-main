@@ -1,1 +1,0 @@
-Create the image from the RTAnalyticsSource and then render it out based on vtk render based on image mapper

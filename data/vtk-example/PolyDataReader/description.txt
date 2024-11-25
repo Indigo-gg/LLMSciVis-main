@@ -1,3 +1,0 @@
-Open an vtk file in the vtk poly data format and render the results.
-
-

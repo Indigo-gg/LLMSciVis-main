@@ -1,2 +1,0 @@
-该页面使用vtk.js加载3D模型，将其转换为VTP文件，并提供下载链接。
-This page uses vtk.js to load a 3Dmodel, converts it to a VTP file, and offers a download link.

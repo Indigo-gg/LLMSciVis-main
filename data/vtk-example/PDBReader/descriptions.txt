@@ -1,1 +1,0 @@
-Using vtkjs to load a pdb data called caffeine.pdb, then using vtkjs to render the results. In particular, after loading necessary vtkjs module, we need to use sphereMapper and stickMapper to convert the pdb data set that can be visualized through vtk render

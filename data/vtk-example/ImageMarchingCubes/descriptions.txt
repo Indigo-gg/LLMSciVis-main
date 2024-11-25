@@ -1,1 +1,0 @@
-Creating a sphere as the data source, and sample the data source based on vtkSampleFunction. Then using the ImageMarchingCubes to process the data.

@@ -1,1 +1,0 @@
-Using spheresource to create shpere data sets and then using the vtkSphereMapper to render the data.
